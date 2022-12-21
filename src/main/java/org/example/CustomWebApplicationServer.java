@@ -9,9 +9,12 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CustomWebApplicationServer {
     private final int port;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     private static final Logger logger = LoggerFactory.getLogger(CustomWebApplicationServer.class);
 
@@ -27,14 +30,24 @@ public class CustomWebApplicationServer {
             logger.info("[CustomWebApplicationServer] waiting for client");
 
             while ((clientSocket = serverSocket.accept()) != null) {
-//                Step1 - 사용자 요청을 메인 Thread가 처리 하도록 한다.
+                logger.info("[CustomWebApplicationServer] client connected!");
+
+                /**
+                 * Step1 - 사용자 요청을 메인 Thread가 처리 하도록 한다.
+                 */
 //                this.resolveHttpRequestAndResponse(clientSocket);
 
                 /**
                  * Step2 - 각 요청마다 별도 Thread가 처리 하도록 한다.
                  * {@link ClientRequestHandler#run()} 에서 처리.
                  */
-                new Thread(new ClientRequestHandler(clientSocket)).start();
+//                new Thread(new ClientRequestHandler(clientSocket)).start();
+
+                /**
+                 * Step2 에서는 Thread가 요청의 수 만큼 무제한 생성. 서버 자원 고갈 위험.
+                 * Step3 - Thread Pool을 이용하여 http 요청을 처리한다.
+                 */
+                executorService.execute(new ClientRequestHandler(clientSocket));
 
             }
         }
