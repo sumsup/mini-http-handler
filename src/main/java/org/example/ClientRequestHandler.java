@@ -6,42 +6,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
-public class CustomWebApplicationServer {
-    private final int port;
+public class ClientRequestHandler implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(ClientRequestHandler.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(CustomWebApplicationServer.class);
+    private final Socket clientSocket;
 
-    public CustomWebApplicationServer(int port) {
-        this.port = port;
+    public ClientRequestHandler(Socket clientSocker) {
+        this.clientSocket = clientSocker;
     }
 
-    public void start() throws IOException {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            logger.info("[CustomWebApplicationServer] started {} port.", port);
+    @Override
+    public void run() {
+        /**
+         * Step2 - 각 요청마다 별도 Thread가 처리 하도록 한다.
+         */
+        logger.info("[ClientRequestHandler] new client {} started.", Thread.currentThread().getName());
 
-            Socket clientSocket;
-            logger.info("[CustomWebApplicationServer] waiting for client");
-
-            while ((clientSocket = serverSocket.accept()) != null) {
-//                Step1 - 사용자 요청을 메인 Thread가 처리 하도록 한다.
-//                this.resolveHttpRequestAndResponse(clientSocket);
-
-                /**
-                 * Step2 - 각 요청마다 별도 Thread가 처리 하도록 한다.
-                 * {@link ClientRequestHandler#run()} 에서 처리.
-                 */
-                new Thread(new ClientRequestHandler(clientSocket)).start();
-
-            }
-        }
-    }
-
-    @Deprecated
-    private void resolveHttpRequestAndResponse(Socket clientSocket) throws IOException {
         try (InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
             BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             DataOutputStream dos = new DataOutputStream(out);
@@ -63,7 +46,8 @@ public class CustomWebApplicationServer {
                 response.responseBody(body);
             }
 
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
-
 }
